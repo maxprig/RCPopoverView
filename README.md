@@ -6,12 +6,12 @@ RCPopoverView is a drop-in cocoa class used to display a generic or custom UIVie
 
 ### From CocoaPods
 
-Add `pod 'RCPopoverView'` to your Podfile
+- Add `pod 'RCPopoverView'` to your Podfile
 
 ### Manually
 
-* Drag the `RCPopoverView/RCPopoverView` folder into your project.
-* Add the **QuartzCore** framework to your project.
+- Drag the `RCPopoverView/RCPopoverView` folder into your project.
+- Add the **QuartzCore** framework to your project.
 
 ## Usage
 

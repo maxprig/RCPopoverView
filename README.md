@@ -18,20 +18,15 @@ Add `pod 'RCPopoverView'` to your Podfile
 Show the popover
 
 ```objective-c
-
 + (void)show;
-
 // Or use a custom view
 + (void)showWithView:(UIView *)popover;
-
 ```
 
 Dismiss the view
 
 ```objective-c
-
 + (void)dismiss;
-
 ```
 
 ## Credits

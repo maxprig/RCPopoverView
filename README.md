@@ -1,6 +1,6 @@
 # RCPopoverView
 
-RCPopoverView is a drop-in cocoa class used to display a generic or custom UIView that slides horizontally. The view is easily dismissed by the user by swiping to the right.  Inspired by the Shows app by Sam Vermette.
+RCPopoverView is a drop-in cocoa class used to display a generic or custom UIView that slides in horizontally. The view is easily dismissed by the user by swiping to the right.  Inspired by the Shows app by Sam Vermette.
 
 ![RCPopoverView](http://i.imgur.com/YXecPvS.png)
 

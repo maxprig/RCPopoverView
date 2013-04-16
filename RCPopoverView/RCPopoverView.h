@@ -14,11 +14,25 @@
 @property (nonatomic, assign) CGFloat inset_left;
 @property (nonatomic, strong) UIView *popoverView;
 
-// Public Methods
+
+/**
+ *  Activate the popover and show the view
+ */
 +(void)show;
+
+/**
+ *  Activate the popover and show a custom view
+ */
 +(void)showWithView:(UIView *)popover;
+
+/**
+ *  Dismiss the popover programatically
+ */
 +(void)dismiss;
 
+/**
+ *  @return Boolean indicating if the popover is in view
+ */
 +(BOOL)isVisible;
 
 @end

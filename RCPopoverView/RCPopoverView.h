@@ -10,10 +10,14 @@
 
 @interface RCPopoverView : UIView
 
+/** top inset height */
 @property (nonatomic, assign) CGFloat inset_top;
-@property (nonatomic, assign) CGFloat inset_left;
-@property (nonatomic, strong) UIView *popoverView;
 
+/** left inset width */
+@property (nonatomic, assign) CGFloat inset_left;
+
+/** UIView to display when activated */
+@property (nonatomic, strong) UIView *popoverView;
 
 /**
  *  Activate the popover and show the view

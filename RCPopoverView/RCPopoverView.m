@@ -1,6 +1,6 @@
 //
 //  RCPopoverView.m
-//  TakeOrder
+//  RCPopoverView
 //
 //  Created by Robin Chou on 11/19/12.
 //  Copyright (c) 2012 Robin Chou. All rights reserved.

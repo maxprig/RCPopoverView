@@ -13,4 +13,5 @@ Pod::Spec.new do |s|
   s.source_files = 'RCPopoverView/*.{h,m}'
   s.framework    = 'QuartzCore'
   s.requires_arc = true
+  s.dependency 'MTAnimation'
 end

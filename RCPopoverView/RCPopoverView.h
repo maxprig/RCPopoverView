@@ -8,36 +8,31 @@
 
 #import <UIKit/UIKit.h>
 
+typedef enum
+{
+    RCPopoverViewStyleFromTop,
+    RCPopoverViewStyleExpandFade
+} RCPopoverViewStyle;
+
+typedef void (^CompletionBlock)(void);
+
 @interface RCPopoverView : UIView
 
-/** Top inset height */
-@property (nonatomic, assign) CGFloat inset_top;
+@property (nonatomic, copy) CompletionBlock completion;
 
-/** Left inset width */
-@property (nonatomic, assign) CGFloat inset_left;
+// Configurable properties
+@property (nonatomic, assign) BOOL tapDismissEnabled;
+@property (nonatomic, assign) BOOL slideDismissEnabled;
 
-/** UIView to display when activated */
-@property (nonatomic, strong) UIView *popoverView;
+// Getters
++ (RCPopoverView *)sharedView;
++ (BOOL)isVisible;
 
-/**
- *  Activate the popover and show the view to the user.
- */
-+(void)show;
+// Public Methods
++ (void)showWithView:(UIView *)popover;
++ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion;
++ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion style:(RCPopoverViewStyle)style;
 
-/**
- *  Activate the popover and show a custom view.
- *  @param popover A custom UIView to present when activated.
- */
-+(void)showWithView:(UIView *)popover;
-
-/**
- *  Dismiss the popover programatically.
- */
-+(void)dismiss;
-
-/**
- *  @return Boolean indicating if the popover is in view.
- */
-+(BOOL)isVisible;
++ (void)dismiss;
 
 @end

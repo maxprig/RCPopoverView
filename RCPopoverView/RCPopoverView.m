@@ -1,6 +1,6 @@
 //
 //  RCPopoverView.m
-//  RCPopoverView
+//  TakeOrder
 //
 //  Created by Robin Chou on 11/19/12.
 //  Copyright (c) 2012 Robin Chou. All rights reserved.
@@ -9,40 +9,50 @@
 #import "RCPopoverView.h"
 #import <QuartzCore/QuartzCore.h>
 
+#define kAnimationDuration 0.3f
+
 @interface RCPopoverView() <UIGestureRecognizerDelegate>
 
-@property (nonatomic, strong, readonly) UIWindow *overlayWindow;
+@property (nonatomic, strong) UIWindow *overlayWindow;
+@property (nonatomic, strong) UIView *hudView;
+@property (nonatomic, assign) RCPopoverViewStyle style;
+@property (nonatomic, assign) CGRect originFrame;
 
 @end
 
 @implementation RCPopoverView
-@synthesize overlayWindow = _overlayWindow;
 
 #pragma mark - Class Methods
 
-+(RCPopoverView *)sharedView {
++ (RCPopoverView *)sharedView
+{
     static dispatch_once_t once;
     static RCPopoverView *sharedView;
     dispatch_once(&once, ^ { sharedView = [[RCPopoverView alloc] initWithFrame:[[UIScreen mainScreen] bounds]]; });
     return sharedView;
 }
 
-+(void)show
-{
-    [[RCPopoverView sharedView] showWithView:nil];
-}
-
-+(void)showWithView:(UIView *)popover
++ (void)showWithView:(UIView *)popover
 {
     [[RCPopoverView sharedView] showWithView:popover];
 }
 
-+(void)dismiss
++ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion
+{
+    
+}
+
++ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion style:(RCPopoverViewStyle)style
+{
+    
+}
+
++ (void)dismiss
 {
     [[RCPopoverView sharedView] dismiss];
 }
 
-+(BOOL)isVisible {
++ (BOOL)isVisible {
     return ([RCPopoverView sharedView].alpha == 1);
 }
 
@@ -53,83 +63,105 @@
     self = [super initWithFrame:frame];
     if (self) {
         // Initialization code
-		self.userInteractionEnabled = YES;
         self.backgroundColor = [UIColor clearColor];
-		self.alpha = 0;
+        self.alpha = 0.0f;
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        _inset_left = 20;
-        _inset_top = 30;
+        self.userInteractionEnabled = YES;
+        self.tapDismissEnabled = NO;
+        self.slideDismissEnabled = NO;
     }
     return self;
 }
 
--(void)showWithView:(UIView *)view
+- (void)showWithView:(UIView *)view
 {
-    if (view) {
-        _popoverView = view;
+    if (self.hudView)
+    {
+        [self.hudView removeFromSuperview];
+        self.hudView = nil;
     }
-    UIPanGestureRecognizer *recognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
-    [self.popoverView addGestureRecognizer:recognizer];
+    self.hudView = view;
+    self.originFrame = self.hudView.frame;
+    [self addSubview:self.hudView];
+    
+    if (self.slideDismissEnabled) {
+        UIPanGestureRecognizer *recognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        [self.hudView addGestureRecognizer:recognizer];
+    }
+    
+    if (self.tapDismissEnabled) {
+        UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)];
+        [self addGestureRecognizer:tapGesture];
+        UISwipeGestureRecognizer *swipeGesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)];
+        [self addGestureRecognizer:swipeGesture];
+    }
     
     if ([RCPopoverView isVisible]) {
         [RCPopoverView dismiss];
         return;
     }
+    
     if (!self.superview) {
         [self.overlayWindow addSubview:self];
     }
     [self.overlayWindow setHidden:NO];
     
     if(self.alpha != 1) {
-        [self setupPopover];
-        
-        [UIView animateWithDuration:0.30
+        self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 1.3f, 1.3f);
+        [UIView animateWithDuration:kAnimationDuration
                               delay:0
                             options:UIViewAnimationOptionCurveEaseOut
                          animations:^{
                              self.alpha = 1;
-                             CGRect frame = self.popoverView.frame;
-                             frame.origin.x = _inset_left;
-                             [self.popoverView setFrame:frame];
+                             self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 1.0f / 1.3f, 1.0f / 1.3f);
                          }
                          completion:^(BOOL finished){
+                             UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
                          }];
     }
     [self setNeedsDisplay];
 }
 
 
--(void)dismiss
+- (void)dismiss
 {
-    [UIView animateWithDuration:0.30
+    [UIView animateWithDuration:kAnimationDuration
                           delay:0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-                         float w = self.frame.size.width;
-                         float h = self.frame.size.height;
-                         [self.popoverView setFrame:CGRectMake(w, _inset_top+20.0, w-2*_inset_left, h-2*_inset_top-20.0)];
+                         self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 0.8f, 0.8f);
+                         self.alpha = 0.0f;
                      }
                      completion:^(BOOL finished){
                          [UIView animateWithDuration:0.3 animations:^{
                              self.alpha = 0;
                          } completion:^(BOOL finished) {
-                             [_popoverView removeFromSuperview];
-                             _popoverView = nil;
-                             [_overlayWindow removeFromSuperview];
+                             [self.hudView removeFromSuperview];
+                             _hudView = nil;
+                             
+                             [self.overlayWindow removeFromSuperview];
                              _overlayWindow = nil;
+                             
+                             // fixes bug where keyboard wouldn't return as keyWindow upon dismissal of HUD
+                             [[UIApplication sharedApplication].windows enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id window, NSUInteger idx, BOOL *stop) {
+                                 if ([window isMemberOfClass:[UIWindow class]])
+                                 {
+                                     [window makeKeyWindow];
+                                     *stop = YES;
+                                 }
+                             }];
+                             
+                             UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
+                             
+                             if (self.completion)
+                             {
+                                 self.completion();
+                             }
                          }];
                      }];
 }
 
 #pragma mark - Helper Methods
-
--(void)setupPopover
-{
-    float w = self.frame.size.width;
-    float h = self.frame.size.height;
-    [self addSubview:_popoverView];
-    [self.popoverView setFrame:CGRectMake(w, _inset_top+20.0, w-2*_inset_left, h-2*_inset_top-20.0)];
-}
 
 - (void)drawRect:(CGRect)rect
 {
@@ -154,77 +186,29 @@
     [recognizer setTranslation:CGPointMake(0, 0) inView:self];
     
     if (recognizer.state == UIGestureRecognizerStateEnded) {
-        CGRect frame = self.popoverView.frame;
+        CGRect frame = self.hudView.frame;
         if (frame.origin.x > self.frame.size.width/3) {
             [self dismiss];
         } else {
             //animate back to origin
-            float w = self.frame.size.width;
-            float h = self.frame.size.height;
             [UIView animateWithDuration:0.30 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-                [self.popoverView setFrame:CGRectMake(_inset_left, _inset_top+20.0, w-2*_inset_left, h-2*_inset_top-20.0)];
+                [self.hudView setFrame:self.originFrame];
             } completion:nil];
         }
     }
 }
 
-- (UIWindow *)overlayWindow {
-    if(!_overlayWindow) {
+- (UIWindow *)overlayWindow
+{
+    if (!_overlayWindow)
+    {
         _overlayWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
         _overlayWindow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         _overlayWindow.backgroundColor = [UIColor clearColor];
-        [_overlayWindow makeKeyAndVisible];
+        _overlayWindow.windowLevel = UIWindowLevelStatusBar;
+        _overlayWindow.userInteractionEnabled = YES;
     }
     return _overlayWindow;
-}
-
-- (UIView *)popoverView {
-    if(!_popoverView) {
-        _popoverView = [[UIView alloc] initWithFrame:CGRectZero];
-        self.popoverView.backgroundColor = [UIColor whiteColor];
-        [self.popoverView.layer setCornerRadius:4.0];
-        _popoverView.autoresizingMask = (UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin |
-                                    UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin);
-//        Apply shadow
-        [self.popoverView.layer setShadowRadius:5.0];
-        [self.popoverView.layer setShadowOpacity:0.8];
-        [self.popoverView.layer setShadowColor:[UIColor blackColor].CGColor];
-        [self.popoverView.layer setShadowOffset:CGSizeMake(0, 2.0)];
-        
-        self.popoverView.clipsToBounds = NO;
-    }
-    return _popoverView;
-}
-
-- (CGFloat)visibleKeyboardHeight {
-    
-    UIWindow *keyboardWindow = nil;
-    for (UIWindow *testWindow in [[UIApplication sharedApplication] windows]) {
-        if(![[testWindow class] isEqual:[UIWindow class]]) {
-            keyboardWindow = testWindow;
-            break;
-        }
-    }
-    
-    // Locate UIKeyboard.
-    UIView *foundKeyboard = nil;
-    for (__strong UIView *possibleKeyboard in [keyboardWindow subviews]) {
-        
-        // iOS 4 sticks the UIKeyboard inside a UIPeripheralHostView.
-        if ([[possibleKeyboard description] hasPrefix:@"<UIPeripheralHostView"]) {
-            possibleKeyboard = [[possibleKeyboard subviews] objectAtIndex:0];
-        }
-        
-        if ([[possibleKeyboard description] hasPrefix:@"<UIKeyboard"]) {
-            foundKeyboard = possibleKeyboard;
-            break;
-        }
-    }
-    
-    if(foundKeyboard && foundKeyboard.bounds.size.height > 100)
-        return foundKeyboard.bounds.size.height;
-    
-    return 0;
 }
 
 @end

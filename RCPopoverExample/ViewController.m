@@ -28,6 +28,11 @@
 }
 
 - (IBAction)showPopover:(id)sender {
-    [RCPopoverView show];
+    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 300)];
+    CGPoint point = CGPointMake(self.view.center.x, self.view.center.y - 44);
+    view.center = point;
+    view.backgroundColor = [UIColor whiteColor];
+    [RCPopoverView showWithView:view];
 }
+
 @end

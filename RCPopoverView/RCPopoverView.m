@@ -9,13 +9,13 @@
 #import "RCPopoverView.h"
 #import <QuartzCore/QuartzCore.h>
 
-#define kAnimationDuration 0.3f
-
 @interface RCPopoverView() <UIGestureRecognizerDelegate>
 
-@property (nonatomic, strong) UIWindow *overlayWindow;
-@property (nonatomic, strong) UIView *hudView;
-@property (nonatomic, assign) RCPopoverViewStyle style;
+@property (nonatomic, assign) RCPopoverViewAnimationStyle style;
+@property (nonatomic, strong) UIControl *overlayView;
+@property (nonatomic, strong) UIView *popoverView;
+@property (nonatomic, readonly) CGFloat visibleKeyboardHeight;
+@property (nonatomic, assign) UIOffset offsetFromCenter;
 @property (nonatomic, assign) CGRect originFrame;
 
 @end
@@ -28,92 +28,166 @@
 {
     static dispatch_once_t once;
     static RCPopoverView *sharedView;
-    dispatch_once(&once, ^ { sharedView = [[RCPopoverView alloc] initWithFrame:[[UIScreen mainScreen] bounds]]; });
+    dispatch_once(&once, ^ { sharedView = [[self alloc] initWithFrame:[[UIScreen mainScreen] bounds]]; });
     return sharedView;
 }
 
-+ (void)showWithView:(UIView *)popover
+#pragma mark - Class Methods
+
++ (void)showWithView:(UIView *)view
 {
-    [[RCPopoverView sharedView] showWithView:popover];
+    [[self sharedView] showWithView:view style:RCPopoverViewAnimationStyleExpandFade completion:nil];
 }
 
-+ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style
 {
-    
+    [[self sharedView] showWithView:view style:style completion:nil];
 }
 
-+ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion style:(RCPopoverViewStyle)style
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion
 {
-    
+    [[self sharedView] showWithView:view style:style completion:completion];
+}
+
++ (void)setOffsetFromCenter:(UIOffset)offset {
+    [self sharedView].offsetFromCenter = offset;
+}
+
++ (void)resetOffsetFromCenter {
+    [self setOffsetFromCenter:UIOffsetZero];
 }
 
 + (void)dismiss
 {
-    [[RCPopoverView sharedView] dismiss];
+    if ([self isVisible]) {
+        [[self sharedView] dismiss];
+    }
 }
 
-+ (BOOL)isVisible {
-    return ([RCPopoverView sharedView].alpha == 1);
++ (BOOL)isVisible
+{
+    return ([self sharedView].alpha == 1);
 }
 
 #pragma mark - Instance Methods
 
 - (id)initWithFrame:(CGRect)frame
 {
-    self = [super initWithFrame:frame];
-    if (self) {
-        // Initialization code
+    if ((self = [super initWithFrame:frame])) {
+		self.userInteractionEnabled = YES;
         self.backgroundColor = [UIColor clearColor];
-        self.alpha = 0.0f;
+		self.alpha = 0;
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        self.userInteractionEnabled = YES;
-        self.tapDismissEnabled = NO;
-        self.slideDismissEnabled = NO;
+        self.tapToDismissEnabled = YES;
+        self.slideToDismissEnabled = NO;
+        self.offsetFromCenter = UIOffsetZero;
+        self.animationDuration = 0.2f;
     }
+	
     return self;
 }
 
-- (void)showWithView:(UIView *)view
+- (void)drawRect:(CGRect)rect
 {
-    if (self.hudView)
-    {
-        [self.hudView removeFromSuperview];
-        self.hudView = nil;
-    }
-    self.hudView = view;
-    self.originFrame = self.hudView.frame;
-    [self addSubview:self.hudView];
+    CGContextRef context = UIGraphicsGetCurrentContext();
     
-    if (self.slideDismissEnabled) {
+    size_t locationsCount = 2;
+    CGFloat locations[2] = {0.0f, 1.0f};
+    CGFloat colors[8] = {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.75f};
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, colors, locations, locationsCount);
+    CGColorSpaceRelease(colorSpace);
+    
+    CGFloat freeHeight = self.bounds.size.height - self.visibleKeyboardHeight;
+    
+    CGPoint center = CGPointMake(self.bounds.size.width/2, freeHeight/2);
+    float radius = MIN(self.bounds.size.width , self.bounds.size.height) ;
+    CGContextDrawRadialGradient (context, gradient, center, 0, center, radius, kCGGradientDrawsAfterEndLocation);
+    CGGradientRelease(gradient);
+}
+
+- (void)updatePosition
+{
+    self.popoverView.center = CGPointMake(self.overlayView.center.x + self.offsetFromCenter.horizontal, self.overlayView.center.y + self.offsetFromCenter.vertical);
+    self.originFrame = self.popoverView.frame;
+}
+
+- (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion
+{
+    if ([RCPopoverView isVisible]) {
+        [self dismiss];
+        return;
+    }
+    
+    if (!self.overlayView.superview) {
+        NSEnumerator *frontToBackWindows = [[[UIApplication sharedApplication] windows] reverseObjectEnumerator];
+        for (UIWindow *window in frontToBackWindows)
+            if (window.windowLevel == UIWindowLevelNormal) {
+                [window addSubview:self.overlayView];
+                break;
+            }
+    }
+    
+    if (!self.superview)
+        [self.overlayView addSubview:self];
+    
+    if (self.popoverView) {
+        [self.popoverView removeFromSuperview];
+        _popoverView = nil;
+    }
+    self.popoverView = view;
+    [self updatePosition];
+    [self addSubview:self.popoverView];
+    
+    if (self.slideToDismissEnabled) {
         UIPanGestureRecognizer *recognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
-        [self.hudView addGestureRecognizer:recognizer];
+        [self.popoverView addGestureRecognizer:recognizer];
     }
     
-    if (self.tapDismissEnabled) {
+    if (self.tapToDismissEnabled) {
         UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)];
         [self addGestureRecognizer:tapGesture];
         UISwipeGestureRecognizer *swipeGesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)];
         [self addGestureRecognizer:swipeGesture];
     }
     
-    if ([RCPopoverView isVisible]) {
-        [RCPopoverView dismiss];
-        return;
-    }
+    self.overlayView.userInteractionEnabled = YES;
+    [self.overlayView setHidden:NO];
     
-    if (!self.superview) {
-        [self.overlayWindow addSubview:self];
-    }
-    [self.overlayWindow setHidden:NO];
+    self.style = style;
+    self.completion = completion;
     
-    if(self.alpha != 1) {
-        self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 1.3f, 1.3f);
-        [UIView animateWithDuration:kAnimationDuration
-                              delay:0
-                            options:UIViewAnimationOptionCurveEaseOut
+    if (self.alpha != 1) {
+        if (style == RCPopoverViewAnimationStyleExpandFade) {
+            self.popoverView.transform = CGAffineTransformScale(self.popoverView.transform, 1.3f, 1.3f);
+        }
+        if (style == RCPopoverViewAnimationtyleFromBottom) {
+            CGRect frame = self.popoverView.frame;
+            frame.origin.y += 50.0f;
+            self.popoverView.frame = frame;
+        }
+        
+        [UIView animateWithDuration:self.animationDuration
+                              delay:0.0f
+                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
-                             self.alpha = 1;
-                             self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 1.0f / 1.3f, 1.0f / 1.3f);
+                             switch (style) {
+                                 case RCPopoverViewAnimationStyleExpandFade:
+                                 {
+                                     self.popoverView.transform = CGAffineTransformScale(self.popoverView.transform, 1.0f / 1.3f, 1.0f / 1.3f);
+                                 }
+                                     break;
+                                 case RCPopoverViewAnimationtyleFromBottom:
+                                 {
+                                     CGRect frame = self.popoverView.frame;
+                                     frame.origin.y -= 50.0f;
+                                     self.popoverView.frame = frame;
+                                 }
+                                     break;
+                                 default:
+                                     break;
+                             }
+                             self.alpha = 1.0f;
                          }
                          completion:^(BOOL finished){
                              UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
@@ -125,58 +199,51 @@
 
 - (void)dismiss
 {
-    [UIView animateWithDuration:kAnimationDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseOut
+    [UIView animateWithDuration:self.animationDuration
+                          delay:0.0f
+                        options:UIViewAnimationCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-                         self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 0.8f, 0.8f);
+                         switch (self.style) {
+                             case RCPopoverViewAnimationStyleExpandFade:
+                             {
+                                 self.popoverView.transform = CGAffineTransformScale(self.popoverView.transform, 0.8f, 0.8f);
+                             }
+                                 break;
+                             case RCPopoverViewAnimationtyleFromBottom:
+                             {
+                                 CGRect frame = self.popoverView.frame;
+                                 frame.origin.y += 50.0f;
+                                 self.popoverView.frame = frame;
+                             }
+                                 break;
+                                 
+                             default:
+                                 break;
+                         }
                          self.alpha = 0.0f;
                      }
                      completion:^(BOOL finished){
-                         [UIView animateWithDuration:0.3 animations:^{
-                             self.alpha = 0;
-                         } completion:^(BOOL finished) {
-                             [self.hudView removeFromSuperview];
-                             _hudView = nil;
-                             
-                             [self.overlayWindow removeFromSuperview];
-                             _overlayWindow = nil;
-                             
-                             // fixes bug where keyboard wouldn't return as keyWindow upon dismissal of HUD
-                             [[UIApplication sharedApplication].windows enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id window, NSUInteger idx, BOOL *stop) {
-                                 if ([window isMemberOfClass:[UIWindow class]])
-                                 {
-                                     [window makeKeyWindow];
-                                     *stop = YES;
-                                 }
-                             }];
-                             
-                             UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
-                             
-                             if (self.completion)
-                             {
-                                 self.completion();
-                             }
-                         }];
+                         [self.popoverView removeFromSuperview];
+                         _popoverView = nil;
+                         
+                         [self.overlayView removeFromSuperview];
+                         _overlayView = nil;
+                         
+                         UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
+                         
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
+                         // Tell the rootViewController to update the StatusBar appearance
+                         UIViewController *rootController = [[UIApplication sharedApplication] keyWindow].rootViewController;
+                         if ([rootController respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
+                             [rootController setNeedsStatusBarAppearanceUpdate];
+                         }
+#endif
+                         
+                         if (self.completion)
+                         {
+                             self.completion();
+                         }
                      }];
-}
-
-#pragma mark - Helper Methods
-
-- (void)drawRect:(CGRect)rect
-{
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    size_t locationsCount = 2;
-    CGFloat locations[2] = {0.0f, 1.0f};
-    CGFloat colors[8] = {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.75f};
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(colorSpace, colors, locations, locationsCount);
-    CGColorSpaceRelease(colorSpace);
-    
-    CGPoint center = CGPointMake(self.bounds.size.width/2, self.bounds.size.height/2);
-    float radius = MIN(self.bounds.size.width , self.bounds.size.height) ;
-    CGContextDrawRadialGradient (context, gradient, center, 0, center, radius, kCGGradientDrawsAfterEndLocation);
-    CGGradientRelease(gradient);
 }
 
 -(void)handlePan:(UIPanGestureRecognizer *)recognizer
@@ -186,29 +253,35 @@
     [recognizer setTranslation:CGPointMake(0, 0) inView:self];
     
     if (recognizer.state == UIGestureRecognizerStateEnded) {
-        CGRect frame = self.hudView.frame;
-        if (frame.origin.x > self.frame.size.width/3) {
+        CGRect frame = self.popoverView.frame;
+        if (frame.origin.x > self.frame.size.width/2) {
             [self dismiss];
         } else {
             //animate back to origin
             [UIView animateWithDuration:0.30 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-                [self.hudView setFrame:self.originFrame];
+                [self.popoverView setFrame:self.originFrame];
             } completion:nil];
         }
     }
 }
 
-- (UIWindow *)overlayWindow
+#pragma mark - Setters
+
+- (void)setOffsetFromCenter:(UIOffset)offsetFromCenter
 {
-    if (!_overlayWindow)
-    {
-        _overlayWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        _overlayWindow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        _overlayWindow.backgroundColor = [UIColor clearColor];
-        _overlayWindow.windowLevel = UIWindowLevelStatusBar;
-        _overlayWindow.userInteractionEnabled = YES;
+    _offsetFromCenter = offsetFromCenter;
+    [self updatePosition];
+}
+
+#pragma mark - Getters
+
+- (UIControl *)overlayView {
+    if(!_overlayView) {
+        _overlayView = [[UIControl alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        _overlayView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        _overlayView.backgroundColor = [UIColor clearColor];
     }
-    return _overlayWindow;
+    return _overlayView;
 }
 
 @end

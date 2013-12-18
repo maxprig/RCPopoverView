@@ -8,11 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
-typedef enum
+typedef enum : NSInteger
 {
-    RCPopoverViewStyleFromTop,
-    RCPopoverViewStyleExpandFade
-} RCPopoverViewStyle;
+    RCPopoverViewAnimationStyleExpandFade,
+    RCPopoverViewAnimationtyleFromBottom
+} RCPopoverViewAnimationStyle;
 
 typedef void (^CompletionBlock)(void);
 
@@ -21,18 +21,21 @@ typedef void (^CompletionBlock)(void);
 @property (nonatomic, copy) CompletionBlock completion;
 
 // Configurable properties
-@property (nonatomic, assign) BOOL tapDismissEnabled;
-@property (nonatomic, assign) BOOL slideDismissEnabled;
+@property (nonatomic, assign) CGFloat animationDuration;
+@property (nonatomic, assign) BOOL tapToDismissEnabled;
+@property (nonatomic, assign) BOOL slideToDismissEnabled;
+
++ (void)setOffsetFromCenter:(UIOffset)offset;
++ (void)resetOffsetFromCenter;
 
 // Getters
 + (RCPopoverView *)sharedView;
 + (BOOL)isVisible;
 
 // Public Methods
-+ (void)showWithView:(UIView *)popover;
-+ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion;
-+ (void)showWithView:(UIView *)view completion:(CompletionBlock)completion style:(RCPopoverViewStyle)style;
-
++ (void)showWithView:(UIView *)view;
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style;
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion;
 + (void)dismiss;
 
 @end

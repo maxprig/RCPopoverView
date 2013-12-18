@@ -1,28 +1,27 @@
 # RCPopoverView
 
-RCPopoverView is a drop-in cocoa class used to display a generic or custom UIView that slides in horizontally. The view is easily dismissed by the user by swiping to the right.  Inspired by the Shows app by Sam Vermette.
+RCPopoverView is an easy to use cocoa class that can display a generic or custom UIView with fade and slide animations.
 
 ![RCPopoverView](http://i.imgur.com/YXecPvS.png)
 
 ## Installation
 
-### From CocoaPods
+### Use CocoaPods
 
 - Add `pod 'RCPopoverView'` to your Podfile
-
-### Manually
-
-- Drag the `RCPopoverView/RCPopoverView` folder into your project.
-- Add the **QuartzCore** framework to your project.
 
 ## Usage
 
 Show the popover
 
 ```objective-c
-+ (void)show;
-// Or use a custom view
-+ (void)showWithView:(UIView *)popover;
++ (void)showWithView:(UIView *)view;
+
+// use custom animation style
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style;
+
+// using a completion handler
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion;
 ```
 
 Dismiss the view
@@ -31,6 +30,36 @@ Dismiss the view
 + (void)dismiss;
 ```
 
+## Features
+
+Change the animation duration
+
+```objective-c
+[RCPopoverView sharedView].animationDuration = 0.5;
+```
+
+Disable tap to dismiss
+
+```objective-c
+[RCPopoverView sharedView].tapToDismissEnabled = NO;
+```
+
+Enable slide to dismiss (slide to the right to dismiss the view)
+
+```objective-c
+[RCPopoverView sharedView].slideToDismissEnabled = YES;
+```
+
+Animation Styles (More to come!)
+
+```objective-c
+typedef enum : NSInteger
+{
+    RCPopoverViewAnimationStyleExpandFade,
+    RCPopoverViewAnimationtyleFromBottom
+} RCPopoverViewAnimationStyle;
+```
+
 ## Credits
 
-RCPopoverView is created by Robin Chou and inspired by SVProgressHUD and the Shows app by Sam Vermette.
+RCPopoverView is created by Robin Chou. Much of the code is inspired by the awesome cocoa classes offered by Sam Vermette (SVProgressHUD).

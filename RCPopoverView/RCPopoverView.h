@@ -14,11 +14,11 @@ typedef enum : NSInteger
     RCPopoverViewAnimationtyleFromBottom
 } RCPopoverViewAnimationStyle;
 
-typedef void (^CompletionBlock)(void);
+typedef void (^RCCompletionBlockVoid)(void);
 
 @interface RCPopoverView : UIView
 
-@property (nonatomic, copy) CompletionBlock completion;
+@property (nonatomic, copy) RCCompletionBlockVoid completion;
 
 // Configurable properties
 @property (nonatomic, assign) CGFloat animationDuration;
@@ -35,7 +35,7 @@ typedef void (^CompletionBlock)(void);
 // Public Methods
 + (void)showWithView:(UIView *)view;
 + (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style;
-+ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion;
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(RCCompletionBlockVoid)completion;
 + (void)dismiss;
 
 @end

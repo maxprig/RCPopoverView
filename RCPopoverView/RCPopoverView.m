@@ -44,7 +44,7 @@
     [[self sharedView] showWithView:view style:style completion:nil];
 }
 
-+ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion
++ (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(RCCompletionBlockVoid)completion
 {
     [[self sharedView] showWithView:view style:style completion:completion];
 }
@@ -112,7 +112,7 @@
     self.originFrame = self.popoverView.frame;
 }
 
-- (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(CompletionBlock)completion
+- (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(RCCompletionBlockVoid)completion
 {
     if ([RCPopoverView isVisible]) {
         [self dismiss];

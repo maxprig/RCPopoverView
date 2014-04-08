@@ -115,7 +115,6 @@
 - (void)showWithView:(UIView *)view style:(RCPopoverViewAnimationStyle)style completion:(RCCompletionBlockVoid)completion
 {
     if ([RCPopoverView isVisible]) {
-        [self dismiss];
         return;
     }
     
